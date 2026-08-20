@@ -1,9 +1,6 @@
 const Rol = require('../models/rol');
 
 
-// =====================================================
-// OBTENER TODOS LOS ROLES
-// =====================================================
 
 const getRoles = async (req, res) => {
   try {
@@ -24,11 +21,6 @@ const getRoles = async (req, res) => {
 
   }
 };
-
-
-// =====================================================
-// OBTENER ROL POR ID
-// =====================================================
 
 const getRolById = async (req, res) => {
   try {
@@ -56,17 +48,10 @@ const getRolById = async (req, res) => {
   }
 };
 
-
-// =====================================================
-// CREAR ROL
-// =====================================================
-
 const createRol = async (req, res) => {
   try {
 
     const { nombre, descripcion } = req.body;
-
-    // Comprobar si el rol ya existe
     const rolExiste = await Rol.findOne({ nombre });
 
     if (rolExiste) {
@@ -75,13 +60,11 @@ const createRol = async (req, res) => {
       });
     }
 
-    // Crear nuevo rol
     const nuevoRol = new Rol({
       nombre,
       descripcion
     });
 
-    // Guardar rol
     const savedRol = await nuevoRol.save();
 
     res.status(201).json({
@@ -98,11 +81,6 @@ const createRol = async (req, res) => {
 
   }
 };
-
-
-// =====================================================
-// ACTUALIZAR ROL
-// =====================================================
 
 const updateRol = async (req, res) => {
   try {
@@ -136,11 +114,6 @@ const updateRol = async (req, res) => {
 
   }
 };
-
-
-// =====================================================
-// ELIMINAR ROL
-// =====================================================
 
 const deleteRol = async (req, res) => {
   try {
