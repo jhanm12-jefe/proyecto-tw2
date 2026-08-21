@@ -5,11 +5,14 @@ const User = require('../models/user');
 const Rol = require('../models/rol');
 
 
+// =====================================================
+// GENERAR TOKEN
+// =====================================================
 const signToken = (user) =>
   jwt.sign(
     {
       id: user._id,
-      rol: user.rol.nombre
+      rol: user.rolId.nombre
     },
     process.env.JWT_SECRET,
     {
@@ -17,12 +20,17 @@ const signToken = (user) =>
     }
   );
 
+
+// =====================================================
+// LOGIN
+// =====================================================
 const login = async (req, res) => {
   try {
 
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    // Buscar usuario y traer su rol
+    const user = await User.findOne({ email }).populate('rolId');
 
     if (!user) {
       return res.status(401).json({
@@ -30,6 +38,7 @@ const login = async (req, res) => {
       });
     }
 
+    // Comparar contraseña
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
@@ -38,9 +47,18 @@ const login = async (req, res) => {
       });
     }
 
-    const token = signToken(user);
-    const userResponse = user.toObject();
+    // Verificar que tenga un rol
+    if (!user.rolId) {
+      return res.status(500).json({
+        error: 'El usuario no tiene un rol asignado'
+      });
+    }
 
+    // Generar token
+    const token = signToken(user);
+
+    // No enviar contraseña
+    const userResponse = user.toObject();
     delete userResponse.password;
 
     res.status(200).json({
@@ -59,10 +77,21 @@ const login = async (req, res) => {
   }
 };
 
+
+// =====================================================
+// REGISTER
+// =====================================================
 const register = async (req, res) => {
   try {
 
-    const { username, email, password } = req.body;
+    const {
+      username,
+      email,
+      password
+    } = req.body;
+
+
+    // Buscar el rol usuario
     const defaultRol = await Rol.findOne({
       nombre: 'usuario'
     });
@@ -73,7 +102,11 @@ const register = async (req, res) => {
       });
     }
 
-    const emailExiste = await User.findOne({ email });
+
+    // Verificar email
+    const emailExiste = await User.findOne({
+      email
+    });
 
     if (emailExiste) {
       return res.status(400).json({
@@ -81,7 +114,11 @@ const register = async (req, res) => {
       });
     }
 
-    const usernameExiste = await User.findOne({ username });
+
+    // Verificar username
+    const usernameExiste = await User.findOne({
+      username
+    });
 
     if (usernameExiste) {
       return res.status(400).json({
@@ -89,24 +126,44 @@ const register = async (req, res) => {
       });
     }
 
-    const encrypt_password = await bcrypt.hash(password, 10);
+
+    // Encriptar contraseña
+    const encrypt_password = await bcrypt.hash(
+      password,
+      10
+    );
+
+
+    // Crear usuario
     const newUser = new User({
       username,
       email,
       password: encrypt_password,
 
-      rolId: defaultRol._id,
-
-      rol: {
-        nombre: defaultRol.nombre,
-        descripcion: defaultRol.descripcion
-      }
+      // Asignar automáticamente el rol usuario
+      rolId: defaultRol._id
     });
 
+
+    // Guardar usuario
     const savedUser = await newUser.save();
-    const token = signToken(savedUser);
-    const userResponse = savedUser.toObject();
+
+
+    // Generar token
+    // Necesitamos tener el rol disponible
+    const userWithRol = await User.findById(
+      savedUser._id
+    ).populate('rolId');
+
+
+    const token = signToken(userWithRol);
+
+
+    // Preparar respuesta
+    const userResponse = userWithRol.toObject();
+
     delete userResponse.password;
+
 
     res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
@@ -123,6 +180,7 @@ const register = async (req, res) => {
 
   }
 };
+
 
 module.exports = {
   login,

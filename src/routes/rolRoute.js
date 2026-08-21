@@ -1,19 +1,19 @@
 const express = require('express');
-
 const {
-  getRoles,
-  getRolById,
-  createRol,
-  updateRol,
-  deleteRol
+  getRoles, getRolById, createRol, updateRol,deleteRol
 } = require('../controllers/rolController');
+
+const verifyToken = require('../middleware/verifyToken');
+const checkRole = require('../middleware/checkRole');
 
 const router = express.Router();
 
+router.use(verifyToken);
 router.get('/', getRoles);
 router.get('/:id', getRolById);
-router.post('/', createRol);
-router.put('/:id', updateRol);
-router.delete('/:id', deleteRol);
+
+router.post('/', checkRole(['admin']), createRol);
+router.put('/:id', checkRole(['admin']), updateRol);
+router.delete('/:id', checkRole(['admin']), deleteRol);
 
 module.exports = router;
