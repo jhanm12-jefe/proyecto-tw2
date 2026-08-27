@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const entradaSchema = require('./entrada');
 
 const userSchema = new mongoose.Schema(
   {
@@ -25,16 +26,22 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'La contraseña debe tener al menos 6 caracteres']
     },
 
+    // Definición de rolId para referenciar la colección Rol
     rolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Rol',
       required: [true, 'El rol es obligatorio']
-    }
+    },
+
+    // Subdocumento embebido para las entradas del diario
+    entradas: [entradaSchema]
   },
   {
     timestamps: true
   }
 );
+
+// Método para comparar contraseña en el Login
 userSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

@@ -2,12 +2,6 @@ const mongoose = require('mongoose');
 
 const entradaSchema = new mongoose.Schema(
   {
-    usuarioId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: [true, 'El usuario es obligatorio']
-    },
-
     titulo: {
       type: String,
       required: [true, 'El título de la entrada es obligatorio'],
@@ -20,10 +14,15 @@ const entradaSchema = new mongoose.Schema(
       trim: true
     },
 
+    fecha: {
+      type: Date,
+      default: Date.now
+    },
+
     animo: {
       type: String,
-      required: [true, 'El ánimo es obligatorio'],
-      trim: true
+      trim: true,
+      default: ''
     },
 
     etiquetas: {
@@ -36,4 +35,5 @@ const entradaSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model('Entrada', entradaSchema);
+// Exportamos únicamente el Schema para embeberlo en User.js
+module.exports = entradaSchema;

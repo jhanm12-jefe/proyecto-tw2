@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/user');
 const Rol = require('../models/rol');
 
-
 // =====================================================
 // GENERAR TOKEN
 // =====================================================
@@ -12,21 +11,19 @@ const signToken = (user) =>
   jwt.sign(
     {
       id: user._id,
-      rol: user.rolId.nombre
+      rol: user.rolId ? user.rolId.nombre : 'usuario'
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: process.env.JWT_EXPIRES_IN
+      expiresIn: process.env.JWT_EXPIRES_IN || '1d'
     }
   );
-
 
 // =====================================================
 // LOGIN
 // =====================================================
 const login = async (req, res) => {
   try {
-
     const { email, password } = req.body;
 
     // Buscar usuario y traer su rol
@@ -57,9 +54,10 @@ const login = async (req, res) => {
     // Generar token
     const token = signToken(user);
 
-    // No enviar contraseña
+    // No enviar contraseña ni la lista completa de entradas en el login
     const userResponse = user.toObject();
     delete userResponse.password;
+    delete userResponse.entradas;
 
     res.status(200).json({
       mensaje: 'Inicio de sesión exitoso',
@@ -68,28 +66,19 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-
     res.status(500).json({
       error: 'Error al iniciar sesión',
       detalle: error.message
     });
-
   }
 };
-
 
 // =====================================================
 // REGISTER
 // =====================================================
 const register = async (req, res) => {
   try {
-
-    const {
-      username,
-      email,
-      password
-    } = req.body;
-
+    const { username, email, password } = req.body;
 
     // Buscar el rol usuario
     const defaultRol = await Rol.findOne({
@@ -98,72 +87,50 @@ const register = async (req, res) => {
 
     if (!defaultRol) {
       return res.status(500).json({
-        error: 'El rol usuario no existe'
+        error: 'El rol usuario no existe en la base de datos'
       });
     }
 
-
     // Verificar email
-    const emailExiste = await User.findOne({
-      email
-    });
-
+    const emailExiste = await User.findOne({ email });
     if (emailExiste) {
       return res.status(400).json({
         error: 'El correo ya está registrado'
       });
     }
 
-
     // Verificar username
-    const usernameExiste = await User.findOne({
-      username
-    });
-
+    const usernameExiste = await User.findOne({ username });
     if (usernameExiste) {
       return res.status(400).json({
         error: 'El nombre de usuario ya está registrado'
       });
     }
 
-
     // Encriptar contraseña
-    const encrypt_password = await bcrypt.hash(
-      password,
-      10
-    );
+    const encrypt_password = await bcrypt.hash(password, 10);
 
-
-    // Crear usuario
+    // Crear usuario con arreglo de entradas vacío
     const newUser = new User({
       username,
       email,
       password: encrypt_password,
-
-      // Asignar automáticamente el rol usuario
-      rolId: defaultRol._id
+      rolId: defaultRol._id,
+      entradas: []
     });
-
 
     // Guardar usuario
     const savedUser = await newUser.save();
 
-
-    // Generar token
-    // Necesitamos tener el rol disponible
-    const userWithRol = await User.findById(
-      savedUser._id
-    ).populate('rolId');
-
+    // Traer el usuario con su rol para firmar el token
+    const userWithRol = await User.findById(savedUser._id).populate('rolId');
 
     const token = signToken(userWithRol);
 
-
-    // Preparar respuesta
+    // Preparar respuesta limpia
     const userResponse = userWithRol.toObject();
-
     delete userResponse.password;
-
+    delete userResponse.entradas;
 
     res.status(201).json({
       mensaje: 'Usuario registrado correctamente',
@@ -172,15 +139,12 @@ const register = async (req, res) => {
     });
 
   } catch (error) {
-
     res.status(500).json({
       error: 'Error al registrar usuario',
       detalle: error.message
     });
-
   }
 };
-
 
 module.exports = {
   login,
