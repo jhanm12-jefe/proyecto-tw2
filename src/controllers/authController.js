@@ -145,8 +145,49 @@ const register = async (req, res) => {
     });
   }
 };
+const updateProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, nombre, email, password, avatar } = req.body;
 
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Actualizar campos de texto (se adapta a si usas 'username' o 'nombre')
+    if (username) user.username = username;
+    if (nombre) user.username = nombre;
+    if (email) user.email = email;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    // Si envía una nueva contraseña, la encriptamos antes de asignar
+    if (password && password.trim() !== '') {
+      user.password = await bcrypt.hash(password.trim(), 10);
+    }
+
+    await user.save();
+
+    // Traer datos actualizados con populate para firmar la respuesta
+    const updatedUser = await User.findById(id).populate('rolId');
+    const userResponse = updatedUser.toObject();
+    delete userResponse.password;
+    delete userResponse.entradas;
+
+    res.status(200).json({
+      mensaje: 'Perfil actualizado correctamente',
+      usuario: userResponse
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Error al actualizar el perfil',
+      detalle: error.message
+    });
+  }
+};
 module.exports = {
   login,
-  register
+  register,
+  updateProfile
 };
