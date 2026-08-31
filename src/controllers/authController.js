@@ -4,9 +4,8 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/user');
 const Rol = require('../models/rol');
 
-// =====================================================
+
 // GENERAR TOKEN
-// =====================================================
 const signToken = (user) =>
   jwt.sign(
     {
@@ -19,9 +18,9 @@ const signToken = (user) =>
     }
   );
 
-// =====================================================
+
 // LOGIN
-// =====================================================
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -35,7 +34,7 @@ const login = async (req, res) => {
       });
     }
 
-    // Comparar contraseña
+    
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
@@ -44,17 +43,17 @@ const login = async (req, res) => {
       });
     }
 
-    // Verificar que tenga un rol
+    
     if (!user.rolId) {
       return res.status(500).json({
         error: 'El usuario no tiene un rol asignado'
       });
     }
 
-    // Generar token
+    
     const token = signToken(user);
 
-    // No enviar contraseña ni la lista completa de entradas en el login
+    
     const userResponse = user.toObject();
     delete userResponse.password;
     delete userResponse.entradas;
@@ -73,9 +72,7 @@ const login = async (req, res) => {
   }
 };
 
-// =====================================================
 // REGISTER
-// =====================================================
 const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -91,7 +88,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Verificar email
+    
     const emailExiste = await User.findOne({ email });
     if (emailExiste) {
       return res.status(400).json({
@@ -99,7 +96,7 @@ const register = async (req, res) => {
       });
     }
 
-    // Verificar username
+    
     const usernameExiste = await User.findOne({ username });
     if (usernameExiste) {
       return res.status(400).json({
@@ -107,10 +104,10 @@ const register = async (req, res) => {
       });
     }
 
-    // Encriptar contraseña
+    
     const encrypt_password = await bcrypt.hash(password, 10);
 
-    // Crear usuario con arreglo de entradas vacío
+    
     const newUser = new User({
       username,
       email,
@@ -119,15 +116,13 @@ const register = async (req, res) => {
       entradas: []
     });
 
-    // Guardar usuario
+    
     const savedUser = await newUser.save();
 
-    // Traer el usuario con su rol para firmar el token
     const userWithRol = await User.findById(savedUser._id).populate('rolId');
 
     const token = signToken(userWithRol);
 
-    // Preparar respuesta limpia
     const userResponse = userWithRol.toObject();
     delete userResponse.password;
     delete userResponse.entradas;
@@ -155,20 +150,18 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Actualizar campos de texto (se adapta a si usas 'username' o 'nombre')
     if (username) user.username = username;
     if (nombre) user.username = nombre;
     if (email) user.email = email;
     if (avatar !== undefined) user.avatar = avatar;
 
-    // Si envía una nueva contraseña, la encriptamos antes de asignar
+
     if (password && password.trim() !== '') {
       user.password = await bcrypt.hash(password.trim(), 10);
     }
 
     await user.save();
 
-    // Traer datos actualizados con populate para firmar la respuesta
     const updatedUser = await User.findById(id).populate('rolId');
     const userResponse = updatedUser.toObject();
     delete userResponse.password;

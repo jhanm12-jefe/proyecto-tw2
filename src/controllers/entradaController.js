@@ -2,9 +2,8 @@ const User = require('../models/user');
 const Animo = require('../models/Animo');
 const Etiqueta = require('../models/Etiqueta');
 
-// =====================================================
+
 // CREAR ENTRADA
-// =====================================================
 const crearEntrada = async (req, res) => {
   try {
     const { titulo, contenido, animo, etiquetas, fecha } = req.body;
@@ -15,7 +14,6 @@ const crearEntrada = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // 1. Crear el objeto de entrada embebido
     const nuevaEntrada = {
       titulo,
       contenido,
@@ -27,10 +25,8 @@ const crearEntrada = async (req, res) => {
     user.entradas.push(nuevaEntrada);
     await user.save();
 
-    // Obtener la entrada recién insertada con su _id generado por Mongoose
     const entradaGuardada = user.entradas[user.entradas.length - 1];
 
-    // 2. Sincronizar Ánimo en la colección catálogo (si se envió)
     if (animo && animo.trim() !== '') {
       const normalizado = animo.toLowerCase().trim();
       await Animo.updateOne(
@@ -40,7 +36,6 @@ const crearEntrada = async (req, res) => {
       );
     }
 
-    // 3. Sincronizar Etiquetas en la colección catálogo (si se enviaron)
     if (etiquetas && Array.isArray(etiquetas)) {
       for (const etiq of etiquetas) {
         if (etiq.trim() !== '') {
@@ -67,9 +62,8 @@ const crearEntrada = async (req, res) => {
   }
 };
 
-// =====================================================
+
 // OBTENER MIS ENTRADAS (Directo del Usuario Logueado)
-// =====================================================
 const obtenerEntradas = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('entradas');
@@ -77,7 +71,6 @@ const obtenerEntradas = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Ordenar por fecha de creación (más reciente primero)
     const entradasOrdenadas = user.entradas.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({
@@ -93,9 +86,8 @@ const obtenerEntradas = async (req, res) => {
   }
 };
 
-// =====================================================
 // OBTENER ENTRADA POR ID
-// =====================================================
+
 const obtenerEntradaPorId = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -103,7 +95,7 @@ const obtenerEntradaPorId = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Buscar la entrada dentro del arreglo del usuario
+    
     const entrada = user.entradas.id(req.params.id);
 
     if (!entrada) {
@@ -123,9 +115,9 @@ const obtenerEntradaPorId = async (req, res) => {
   }
 };
 
-// =====================================================
+
 // ACTUALIZAR ENTRADA
-// =====================================================
+
 const actualizarEntrada = async (req, res) => {
   try {
     const { titulo, contenido, animo, etiquetas, fecha } = req.body;
@@ -150,7 +142,7 @@ const actualizarEntrada = async (req, res) => {
 
     await user.save();
 
-    // Sincronizar catálogo de ánimos y etiquetas nuevamente
+    
     if (animo && animo.trim() !== '') {
       const normalizado = animo.toLowerCase().trim();
       await Animo.updateOne(
@@ -173,9 +165,7 @@ const actualizarEntrada = async (req, res) => {
   }
 };
 
-// =====================================================
 // ELIMINAR ENTRADA
-// =====================================================
 const eliminarEntrada = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -188,7 +178,6 @@ const eliminarEntrada = async (req, res) => {
       return res.status(404).json({ error: 'Entrada no encontrada' });
     }
 
-    // Eliminar subdocumento mediante pull/deleteOne
     user.entradas.pull(req.params.id);
     await user.save();
 
@@ -204,9 +193,9 @@ const eliminarEntrada = async (req, res) => {
   }
 };
 
-// =====================================================
+
 // BUSCADOR AVANZADO (Por Coincidencia Flexible y Calendario)
-// =====================================================
+
 const buscarEntradas = async (req, res) => {
   try {
     const { query, animo, etiqueta, anio, mes, dia } = req.query;
@@ -218,7 +207,6 @@ const buscarEntradas = async (req, res) => {
 
     let resultados = user.entradas;
 
-    // 1. Filtrar por término general de búsqueda (Búsqueda en Título, Ánimo o Contenido)
     const terminoBusqueda = query || req.query.titulo;
     if (terminoBusqueda && terminoBusqueda.trim() !== '') {
       const regex = new RegExp(terminoBusqueda.trim(), 'i');
@@ -230,32 +218,30 @@ const buscarEntradas = async (req, res) => {
       );
     }
 
-    // 2. Filtro específico por Ánimo (si se especifica en query)
     if (animo && animo.trim() !== '') {
       const regexAnimo = new RegExp(animo.trim(), 'i');
       resultados = resultados.filter(e => regexAnimo.test(e.animo));
     }
 
-    // 3. Filtro específico por Etiqueta (si se especifica en query)
     if (etiqueta && etiqueta.trim() !== '') {
       const regexEtiqueta = new RegExp(etiqueta.trim(), 'i');
       resultados = resultados.filter(e => e.etiquetas.some(tag => regexEtiqueta.test(tag)));
     }
 
-    // 4. Filtrado por Calendario (Día, Mes, Año)
+    
     if (anio) {
       let inicioFecha, finFecha;
 
       if (dia && mes) {
-        // Buscar un Día Específico
+        
         inicioFecha = new Date(anio, mes - 1, dia, 0, 0, 0, 0);
         finFecha = new Date(anio, mes - 1, dia, 23, 59, 59, 999);
       } else if (mes) {
-        // Buscar un Mes Completo
+        
         inicioFecha = new Date(anio, mes - 1, 1, 0, 0, 0, 0);
         finFecha = new Date(anio, mes, 0, 23, 59, 59, 999);
       } else {
-        // Buscar todo el Año
+        
         inicioFecha = new Date(anio, 0, 1, 0, 0, 0, 0);
         finFecha = new Date(anio, 11, 31, 23, 59, 59, 999);
       }
@@ -266,7 +252,7 @@ const buscarEntradas = async (req, res) => {
       });
     }
 
-    // Ordenar los resultados filtrados
+    
     resultados.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({
